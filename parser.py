@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import codecs
 import os
+import re
 
 def parse_data(krisha_link):
 	page = requests.get(krisha_link)
@@ -30,6 +31,8 @@ def parse_data(krisha_link):
 	parking = -1
 	price = -1
 	region = -1
+	longitude = 0.0
+	latitude = 0.0
 
 	if (page.status_code == 200):
 		soup = BeautifulSoup(page.content, 'html.parser')
@@ -41,6 +44,21 @@ def parse_data(krisha_link):
 			if (rmc is None):
 				rmc = soup.find('div', class_='a-header owner')
 
+		pattern = re.compile(r'"lat":')
+		script_text = soup.find('script', text=pattern)
+		if (script_text != None):
+			all_script_text = script_text.string
+			lat = re.search('"lat":(.+?),"lon":', all_script_text)
+			if lat:
+			    latitude = lat.group(1)
+
+			lon = re.search('"lon":(.+?),"zoom"', all_script_text)
+			if lon:
+			    longitude = lon.group(1)
+
+		district = soup.find('div', class_='a-where-region')
+		district = district.text
+		print(district)
 
 		room_count = rmc.h1.text[0]
 		address = rmc.h1.text[21:]
@@ -99,7 +117,7 @@ def parse_data(krisha_link):
 	else:
 		print("Failed to load page: --> ", krisha_link)
 		return 0
-	ans = "address: " + str(address) + "|" + " room_count: " + str(room_count) + "|" + " Жилой комплекс: " + str(map_complex) + "|" + " Дом: " + str(building) + "|" + "Время постройки: " + str(built_time) + "|" + " Этаж: " + str(floor) + "|" + " Площадь: " + str(space) + "|" + " Состояние: " + str(renovation) + "|" + " Санузел: " + str(toilet) + "|" + " Балкон: " + str(balcony) + "|" + " Балкон остеклен: " + str(balcony_glass) + "|" + " Дверь: " + str(door) + "|" + " Телефон: " + str(phone) + "|" + " Потолки: " + str(ceiling) + "|" + " Безопасноть: " + str(security) + "|" + " В прив. общежитии: " + str(priv_dorm) + "|" + " Интернет: " + str(internet) + "|" + " Мебель: " + str(furniture) + "|" + " Пол: " + str(flooring) + "|" + " Парковка: " + str(parking) + "\n"
+	ans = "district:" + str(district) + "|" + "address: " + str(address) + "|" + " room_count: " + str(room_count) + "|" + " price: " + str(price) + "|" + " Жилой комплекс: " + str(map_complex) + "|" + " Дом: " + str(building) + "|" + "Время постройки: " + str(built_time) + "|" + " Этаж: " + str(floor) + "|" + " Площадь: " + str(space) + "|" + " Состояние: " + str(renovation) + "|" + " Санузел: " + str(toilet) + "|" + " Балкон: " + str(balcony) + "|" + " Балкон остеклен: " + str(balcony_glass) + "|" + " Дверь: " + str(door) + "|" + " Телефон: " + str(phone) + "|" + " Потолки: " + str(ceiling) + "|" + " Безопасноть: " + str(security) + "|" + " В прив. общежитии: " + str(priv_dorm) + "|" + " Интернет: " + str(internet) + "|" + " Мебель: " + str(furniture) + "|" + " Пол: " + str(flooring) + "|" + " Парковка: " + str(parking) + "|" + " Latitude: " + str(latitude) + "|" + " Longitude: " + str(longitude) + "\n"
 	return ans
 
 
@@ -114,26 +132,54 @@ def pulling_links(page):
 	return links
 
 
-def get_links(city):
+def get_count(link):
+	page = requests.get(link)
+	if (page.status_code == 200):
+		count_soup = BeautifulSoup(page.content, 'html.parser')
+		cnt = count_soup.find('div', class_ = 'a-search-subtitle search-results-nb')
+		count = cnt.span.text
+		count = count.replace(u'\xa0', '')
+		count = int(count)
+	else:
+		count = 0
+	return count
+
+
+def get_links(city, links_count):
 	page_0 = "https://krisha.kz/prodazha/kvartiry/" + city + "/"
 	temp_list = pulling_links(page_0)
-	whole_links = []
-	whole_links.extend(temp_list)
+	temp_list = normalizing_links(temp_list)
+	save_links(temp_list)
 	cnt = len(temp_list)
 	count = 2
-	while (cnt < 34000):
+	while (cnt <= links_count):
 		page = "https://krisha.kz/prodazha/kvartiry/" + city + "/?page=" + str(count)
 		temp_list = pulling_links(page)
-		#print(len(temp_list))
-		whole_links.extend(temp_list)
+		temp_list = normalizing_links(temp_list)
+		save_links(temp_list)
 		cnt = cnt + len(temp_list)
 		count = count + 1
-	for i in range(len(whole_links)):
-		whole_links[i] = "https://krisha.kz" + whole_links[i]
-	thefile = open('links.txt', 'w')
-	for item in whole_links:
-		thefile.write("%s\n" % item)
-	thefile.close()
+
+	return "Links pulled succesfully!"
+
+
+def normalizing_links(temp_list):
+	for i in range(len(temp_list)):
+		temp_list[i] = "https://krisha.kz" + temp_list[i]
+	return temp_list
+
+
+def save_links(links_data):
+	cwd = os.getcwd()
+	cwd = cwd + "/links.txt"
+	if (os.path.isfile(cwd)):
+		with codecs.open("links.txt", "a", "utf-8") as myfile:
+			for i in range(len(links_data)):
+				myfile.write(str(links_data[i]) + "\n")
+	else:
+		with codecs.open("links.txt", "w", "utf-8") as myfile:
+			for i in range(len(links_data)):
+				myfile.write(str(links_data[i]) + "\n")
 
 
 def save_data(data):
@@ -166,7 +212,8 @@ def parse_and_save(first, second, whole_links):
 
 
 def main():
-	#get_links()
+	links_count = get_count("https://krisha.kz/prodazha/kvartiry/almaty/")
+	print(get_links("almaty", links_count))
 	thefile = open("links.txt", 'r')
 	whole_links = thefile.readlines()
 
