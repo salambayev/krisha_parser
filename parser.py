@@ -149,18 +149,18 @@ def get_links(city, links_count):
 	page_0 = "https://krisha.kz/prodazha/kvartiry/" + city + "/"
 	temp_list = pulling_links(page_0)
 	temp_list = normalizing_links(temp_list)
-	save_links(temp_list)
+	save_links(city, temp_list)
 	cnt = len(temp_list)
 	count = 2
 	while (cnt <= links_count):
 		page = "https://krisha.kz/prodazha/kvartiry/" + city + "/?page=" + str(count)
 		temp_list = pulling_links(page)
 		temp_list = normalizing_links(temp_list)
-		save_links(temp_list)
+		save_links(city, temp_list)
 		cnt = cnt + len(temp_list)
 		count = count + 1
 
-	return "Links pulled succesfully!"
+	return "Links of : " + city + " pulled succesfully! "
 
 
 def normalizing_links(temp_list):
@@ -169,70 +169,91 @@ def normalizing_links(temp_list):
 	return temp_list
 
 
-def save_links(links_data):
+def save_links(city, links_data):
 	cwd = os.getcwd()
-	cwd = cwd + "/links.txt"
+	cwd = cwd + "/links_" + city + ".txt"
+	truepath = "links_" + city + ".txt"
 	if (os.path.isfile(cwd)):
-		with codecs.open("links.txt", "a", "utf-8") as myfile:
+		with codecs.open(truepath, "a", "utf-8") as myfile:
 			for i in range(len(links_data)):
 				myfile.write(str(links_data[i]) + "\n")
 	else:
-		with codecs.open("links.txt", "w", "utf-8") as myfile:
+		with codecs.open(truepath, "w", "utf-8") as myfile:
 			for i in range(len(links_data)):
 				myfile.write(str(links_data[i]) + "\n")
 
 
-def save_data(data):
+def save_data(city, data):
 	cwd = os.getcwd()
-	cwd = cwd + "/data.txt"
+	cwd = cwd + "/data_" + city + ".txt"
+	truepath = "data_" + city + ".txt"
 	if (os.path.isfile(cwd)):
-		with codecs.open("data.txt", "a", "utf-8") as myfile:
+		with codecs.open(truepath, "a", "utf-8") as myfile:
 			myfile.write(str(data))
 	else:
-		with codecs.open("data.txt", "w", "utf-8") as myfile:
+		with codecs.open(truepath, "w", "utf-8") as myfile:
 			myfile.write(str(data))
-		# json.dump(appartments, open(path, 'a'),encoding='utf8')
-		# with codecs.open('data.txt', 'a', encoding='utf-8') as f:
-		# 	json.dump(appartments, f, ensure_ascii=False)
 
 
+def log(text):
+	cwd = os.getcwd()
+	cwd = cwd + "/logs.txt"
+	if (os.path.isfile(cwd)):
+		with codecs.open("logs.txt", "a", "utf-8") as myfile:
+			myfile.write(str(text))
+	else:
+		with codecs.open("logs.txt", "w", "utf-8") as myfile:
+			myfile.write(str(text))
 
-def parse_and_save(first, second, whole_links):
+
+def parse_and_save(city, first, second, whole_links):
 	for i in range(first, second):
 		temp_appart = parse_data(whole_links[i])
 		if (temp_appart != 0):
-			save_data(temp_appart)
+			save_data(city, temp_appart)
 		else:
-			print("Found empty page: --> ", whole_links[i])
+			log("Found empty page: --> " + "City: " + city + " " + whole_links[i])
 
 	with open("last_index.txt", "w") as myfile:
 		myfile.write(str(second))
-	return print("Parsing from {} to {} - succesfully! ", first, second)
+	return log("City: " + city + "Parsing from " + first + " to " + second + " - succesfully!" )
+
+
+def cities():
+	cts = ["almaty", "astana", "akmolinskaja-oblast", "aktjubinskaja-oblast", "almatinskaja-oblast",
+			"atyrauskaja-oblast", "vostochno-kazahstanskaja-oblast", "zhambylskaja-oblast", "zapadno-kazahstanskaja-oblast",
+			"karagandinskaja-oblast", "kostanajskaja-oblast", "kyzylordinskaja-oblast", "mangistauskaja-oblast", "pavlodarskaja-oblast", "severo-kazahstanskaja-oblast",
+			"juzhno-kazahstanskaja-oblast"]
+	for i in range(len(cts)):
+		links_count = get_count("https://krisha.kz/prodazha/kvartiry/" + cts[i] + "/")
+		log(get_links(cts[i], links_count))
+		thefile = open("links_" + cts[i] + ".txt", 'r')
+		whole_links = thefile.readlines()
+
+		cwd = os.getcwd()
+		cwd = cwd + "/last_index_" + cts[i] + ".txt"
+		truefile = "last_index_" + cts[i] + ".txt"
+		if (os.path.isfile(cwd)):
+			with open(truefile, 'r') as myfile:
+				last_index = myfile.read()
+				if (last_index == ''):
+					last_index = 0
+		else:
+			last_index = 0
+		counting = int(len(whole_links)/10)
+		log(str(counting) + " in " + cts[i])
+		last_index = int(last_index)
+		while(last_index < len(whole_links)):
+			parse_and_save(cts[i], last_index, last_index + counting, whole_links)
+			last_index = last_index + counting
+
+		with open(truefile, 'w') as myfile:
+			myfile.write(str(0))
 
 
 
 def main():
-	links_count = get_count("https://krisha.kz/prodazha/kvartiry/almaty/")
-	print(get_links("almaty", links_count))
-	thefile = open("links.txt", 'r')
-	whole_links = thefile.readlines()
-
-	cwd = os.getcwd()
-	cwd = cwd + "/last_index.txt"
-	if (os.path.isfile(cwd)):
-		with open("last_index.txt", 'r') as myfile:
-			last_index = myfile.read()
-			if (last_index == ''):
-				last_index = 0
-	else:
-		last_index = 0
-	counting = int(len(whole_links)/10)
-	print(counting)
-	last_index = int(last_index)
-	print(last_index)
-	while(last_index < len(whole_links)):
-		parse_and_save(last_index, last_index+counting, whole_links)
-		last_index = last_index + counting
+	cities()
 
 
 main()
