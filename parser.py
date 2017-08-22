@@ -148,14 +148,14 @@ def get_count(link):
 def get_links(city, links_count):
 	page_0 = "https://krisha.kz/prodazha/kvartiry/" + city + "/"
 	temp_list = pulling_links(page_0)
-	temp_list = normalizing_links(temp_list)
+	temp_list = normalizing_links(city, temp_list)
 	save_links(city, temp_list)
 	cnt = len(temp_list)
 	count = 2
 	while (cnt <= links_count):
 		page = "https://krisha.kz/prodazha/kvartiry/" + city + "/?page=" + str(count)
 		temp_list = pulling_links(page)
-		temp_list = normalizing_links(temp_list)
+		temp_list = normalizing_links(city, temp_list)
 		save_links(city, temp_list)
 		cnt = cnt + len(temp_list)
 		count = count + 1
@@ -163,9 +163,9 @@ def get_links(city, links_count):
 	return "Links of : " + city + " pulled succesfully! "
 
 
-def normalizing_links(temp_list):
+def normalizing_links(city, temp_list):
 	for i in range(len(temp_list)):
-		temp_list[i] = "https://krisha.kz" + temp_list[i]
+		temp_list[i] = "https://krisha.kz" + temp_list[i] + " | " + city
 	return temp_list
 
 
